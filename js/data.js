@@ -136,3 +136,80 @@ function isExpiringSoon(dateStr, withinDays = 90) {
     const diff = new Date(dateStr) - new Date();
     return diff / (1000 * 60 * 60 * 24) <= withinDays;
 }
+
+// === XSS 防护 ===
+function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return str.replace(/[&<>"']/g, c => map[c]);
+}
+
+// === 数据导出/导入 ===
+function exportData() {
+    const data = loadData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `health_guardian_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('数据已导出 ✓');
+}
+
+function importData(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data.members || !Array.isArray(data.members)) {
+                showToast('文件格式不正确'); return;
+            }
+            saveData(data);
+            showToast('数据已恢复 ✓');
+            setTimeout(() => location.reload(), 500);
+        } catch (err) {
+            showToast('导入失败：文件损坏');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// === 输入验证 ===
+function clamp(val, min, max) {
+    return Math.max(min, Math.min(max, val));
+}
+
+function validateMemberInput(input) {
+    return {
+        name: (input.name || '').trim().slice(0, 20),
+        avatar: (input.avatar || '👤').slice(0, 2),
+        age: clamp(parseInt(input.age) || 0, 0, 150),
+        height: clamp(parseInt(input.height) || 0, 0, 250),
+        weight: clamp(parseInt(input.weight) || 0, 0, 300),
+        checkupDate: input.checkupDate || ''
+    };
+}
+
+// === 过期药品提醒 ===
+function getExpiringMedicines(data, withinDays = 90) {
+    const now = new Date();
+    return data.medicines.filter(m => {
+        const exp = new Date(m.expiryDate);
+        return (exp - now) / (1000 * 60 * 60 * 24) <= withinDays;
+    }).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+}
+
+// === 自定义资源链接 ===
+function addCustomLink(data, link) {
+    if (!data.customLinks) data.customLinks = [];
+    link.id = Date.now().toString();
+    data.customLinks.push(link);
+    saveData(data);
+}
+
+function deleteCustomLink(data, id) {
+    if (!data.customLinks) return;
+    data.customLinks = data.customLinks.filter(l => l.id !== id);
+    saveData(data);
+}

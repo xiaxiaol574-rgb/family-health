@@ -10,12 +10,24 @@ function renderDashboard(container, data) {
   const bmiStatus = getBMIStatus(bmi);
   const checkupDays = daysUntilCheckup(member.checkupDate);
   const todayRec = getTodayRecord(data, member.id);
+  const expiringMeds = getExpiringMedicines(data, 90);
 
   container.innerHTML = `
     <div class="page-header">
       <h1>健康概览</h1>
-      <span class="subtitle">${member.avatar} ${member.name} 的健康状态</span>
+      <span class="subtitle">${escapeHtml(member.avatar)} ${escapeHtml(member.name)} 的健康状态</span>
     </div>
+    ${expiringMeds.length ? `
+    <div class="alert-bar">
+      ⚠️ <strong>药品提醒：</strong>
+      ${expiringMeds.slice(0, 3).map(m => {
+    const expired = new Date(m.expiryDate) < new Date();
+    return `<span class="alert-tag ${expired ? 'alert-expired' : 'alert-expiring'}">${escapeHtml(m.name)} ${expired ? '已过期' : m.expiryDate}</span>`;
+  }).join('')}
+      ${expiringMeds.length > 3 ? `<span class="alert-more">等${expiringMeds.length}种</span>` : ''}
+      <button class="alert-link" onclick="switchPage('knowledge')">查看药箱 →</button>
+    </div>
+    ` : ''}
     <div class="dashboard-grid">
       <div class="card card-score" id="card-score">
         <div class="card-title">健康评分</div>

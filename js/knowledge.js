@@ -127,15 +127,39 @@ function renderKnowledge(container, data) {
               <div class="resource-cat-title">${cat.cat}</div>
               <div class="resource-links">
                 ${cat.links.map(l => `
-                  <a href="${l.url}" target="_blank" rel="noopener" class="resource-link" title="${l.desc}">
-                    <span class="resource-name">${l.name}</span>
-                    <span class="resource-desc">${l.desc}</span>
+                  <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener" class="resource-link" title="${escapeHtml(l.desc)}">
+                    <span class="resource-name">${escapeHtml(l.name)}</span>
+                    <span class="resource-desc">${escapeHtml(l.desc)}</span>
                     <span class="resource-arrow">↗</span>
                   </a>
                 `).join('')}
               </div>
             </div>
           `).join('')}
+          ${(data.customLinks && data.customLinks.length) ? `
+          <div class="resource-category">
+            <div class="resource-cat-title">⭐ 我的收藏</div>
+            <div class="resource-links">
+              ${data.customLinks.map(l => `
+                <div class="resource-link custom-link-item">
+                  <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+                    <span class="resource-name">${escapeHtml(l.name)}</span>
+                    <span class="resource-desc">${escapeHtml(l.desc)}</span>
+                    <span class="resource-arrow">↗</span>
+                  </a>
+                  <button class="btn-icon" onclick="removeCustomLink('${escapeHtml(l.id)}')" title="删除">🗑️</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+        </div>
+        <button class="btn btn-outline btn-block" style="margin-top:12px" onclick="showAddCustomLink()">+ 添加常用网站</button>
+        <div id="add-link-form" class="add-med-form hidden" style="margin-top:12px">
+          <input id="link-name" placeholder="网站名称" class="input">
+          <input id="link-url" placeholder="https://..." class="input" style="grid-column:span 2">
+          <input id="link-desc" placeholder="简短描述" class="input">
+          <button class="btn btn-primary btn-sm" onclick="saveCustomLink()">添加</button>
         </div>
       </div>
     </div>`;
@@ -160,6 +184,29 @@ function saveMedicine() {
 function removeMedicine(id) {
   const data = loadData();
   deleteMedicine(data, id);
+  renderKnowledge(document.getElementById('main-content'), data);
+  showToast('已删除');
+}
+
+function showAddCustomLink() {
+  document.getElementById('add-link-form').classList.toggle('hidden');
+}
+
+function saveCustomLink() {
+  const name = document.getElementById('link-name').value.trim();
+  const url = document.getElementById('link-url').value.trim();
+  const desc = document.getElementById('link-desc').value.trim() || '';
+  if (!name || !url) { showToast('请填写网站名称和地址'); return; }
+  if (!url.startsWith('http://') && !url.startsWith('https://')) { showToast('地址需以 http:// 或 https:// 开头'); return; }
+  const data = loadData();
+  addCustomLink(data, { name, url, desc });
+  renderKnowledge(document.getElementById('main-content'), data);
+  showToast('链接已添加 ✓');
+}
+
+function removeCustomLink(id) {
+  const data = loadData();
+  deleteCustomLink(data, id);
   renderKnowledge(document.getElementById('main-content'), data);
   showToast('已删除');
 }

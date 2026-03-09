@@ -22,9 +22,9 @@ function renderSidebar() {
     <div class="member-list">
       ${appData.members.map(m => `
         <button class="member-btn ${m.id === appData.activeMemberId ? 'active' : ''}"
-                onclick="selectMember('${m.id}')" title="${m.name}">
-          <span class="member-avatar">${m.avatar}</span>
-          <span class="member-name">${m.name}</span>
+                onclick="selectMember('${escapeHtml(m.id)}')" title="${escapeHtml(m.name)}">
+          <span class="member-avatar">${escapeHtml(m.avatar)}</span>
+          <span class="member-name">${escapeHtml(m.name)}</span>
           ${m.id === appData.activeMemberId ? '<span class="member-active-dot"></span>' : ''}
         </button>
       `).join('')}
@@ -98,14 +98,14 @@ function saveNewMember() {
   const name = document.getElementById('new-name').value.trim();
   if (!name) { showToast('请输入称呼'); return; }
   const data = loadData();
-  addMember(data, {
+  addMember(data, validateMemberInput({
     name,
-    avatar: document.getElementById('new-avatar').value || '👤',
-    age: parseInt(document.getElementById('new-age').value) || 0,
-    height: parseInt(document.getElementById('new-height').value) || 0,
-    weight: parseInt(document.getElementById('new-weight').value) || 0,
-    checkupDate: document.getElementById('new-checkup').value || ''
-  });
+    avatar: document.getElementById('new-avatar').value,
+    age: document.getElementById('new-age').value,
+    height: document.getElementById('new-height').value,
+    weight: document.getElementById('new-weight').value,
+    checkupDate: document.getElementById('new-checkup').value
+  }));
   closeModal();
   appData = data;
   switchPage(currentPage);
@@ -123,17 +123,24 @@ function showSettings() {
   modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="modal">
-      <h3>⚙️ ${member.avatar} ${member.name} 的信息</h3>
-      <div class="form-group"><label>称呼</label><input id="edit-name" class="input" value="${member.name}"></div>
-      <div class="form-group"><label>头像</label><input id="edit-avatar" class="input" value="${member.avatar}" maxlength="2"></div>
-      <div class="form-group"><label>年龄</label><input id="edit-age" class="input" type="number" value="${member.age}"></div>
-      <div class="form-group"><label>身高(cm)</label><input id="edit-height" class="input" type="number" value="${member.height}"></div>
-      <div class="form-group"><label>体重(kg)</label><input id="edit-weight" class="input" type="number" value="${member.weight}"></div>
+      <h3>⚙️ ${escapeHtml(member.avatar)} ${escapeHtml(member.name)} 的信息</h3>
+      <div class="form-group"><label>称呼</label><input id="edit-name" class="input" value="${escapeHtml(member.name)}"></div>
+      <div class="form-group"><label>头像</label><input id="edit-avatar" class="input" value="${escapeHtml(member.avatar)}" maxlength="2"></div>
+      <div class="form-group"><label>年龄</label><input id="edit-age" class="input" type="number" min="0" max="150" value="${member.age}"></div>
+      <div class="form-group"><label>身高(cm)</label><input id="edit-height" class="input" type="number" min="50" max="250" value="${member.height}"></div>
+      <div class="form-group"><label>体重(kg)</label><input id="edit-weight" class="input" type="number" min="10" max="300" value="${member.weight}"></div>
       <div class="form-group"><label>下次体检</label><input id="edit-checkup" class="input" type="date" value="${member.checkupDate}"></div>
       <div class="modal-btns">
-        <button class="btn btn-danger" onclick="confirmDelete('${member.id}')">删除成员</button>
+        <button class="btn btn-danger" onclick="confirmDelete('${escapeHtml(member.id)}')">删除成员</button>
         <button class="btn btn-outline" onclick="closeModal()">取消</button>
-        <button class="btn btn-primary" onclick="saveEditMember('${member.id}')">保存</button>
+        <button class="btn btn-primary" onclick="saveEditMember('${escapeHtml(member.id)}')">保存</button>
+      </div>
+      <div style="border-top:1px solid var(--card-border);margin-top:16px;padding-top:16px">
+        <div class="card-title">💾 数据管理</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" style="flex:1" onclick="exportData()">📥 导出备份</button>
+          <label class="btn btn-outline" style="flex:1;text-align:center;cursor:pointer">📤 导入恢复<input type="file" accept=".json" style="display:none" onchange="importData(this.files[0])"></label>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -142,14 +149,14 @@ function showSettings() {
 
 function saveEditMember(id) {
   const data = loadData();
-  updateMember(data, id, {
-    name: document.getElementById('edit-name').value.trim(),
+  updateMember(data, id, validateMemberInput({
+    name: document.getElementById('edit-name').value,
     avatar: document.getElementById('edit-avatar').value,
-    age: parseInt(document.getElementById('edit-age').value) || 0,
-    height: parseInt(document.getElementById('edit-height').value) || 0,
-    weight: parseInt(document.getElementById('edit-weight').value) || 0,
+    age: document.getElementById('edit-age').value,
+    height: document.getElementById('edit-height').value,
+    weight: document.getElementById('edit-weight').value,
     checkupDate: document.getElementById('edit-checkup').value
-  });
+  }));
   closeModal();
   appData = data;
   switchPage(currentPage);
@@ -277,7 +284,7 @@ function showFeedback() {
     <p style="color:var(--text2);font-size:13px;margin-bottom:16px">家人的反馈帮助我们不断改善健康管理方式</p>
     <div class="form-group">
       <label>提交人</label>
-      <span style="color:var(--green)">${member.avatar} ${member.name}</span>
+      <span style="color:var(--green)">${escapeHtml(member.avatar)} ${escapeHtml(member.name)}</span>
     </div>
     <div class="form-group">
       <label>类型</label>
@@ -297,8 +304,8 @@ function showFeedback() {
         <div class="card-title" style="margin-top:20px">📋 历史反馈 (${feedbacks.length})</div>
         ${feedbacks.slice(-5).reverse().map(f => `
           <div class="fb-item">
-            <div class="fb-meta">${f.memberName} · ${f.date} · ${f.type === 'suggestion' ? '💡建议' : f.type === 'problem' ? '🐛问题' : '👍表扬'}</div>
-            <div class="fb-text">${f.content}</div>
+            <div class="fb-meta">${escapeHtml(f.memberName)} · ${escapeHtml(f.date)} · ${f.type === 'suggestion' ? '💡建议' : f.type === 'problem' ? '🐛问题' : '👍表扬'}</div>
+            <div class="fb-text">${escapeHtml(f.content)}</div>
           </div>
         `).join('')}
       </div>
